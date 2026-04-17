@@ -1,10 +1,13 @@
 #include "tree.h"
-#include "pes.h"     // IMPORTANT: fixes object_write warning
+#include "pes.h"     
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
+
+// Comments 
 
 int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
 
@@ -16,7 +19,7 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
 // ─── PROVIDED ───────────────────────────────────────────────────────────────
 
-// Determine the object mode for a filesystem path.
+
 uint32_t get_file_mode(const char *path) {
     struct stat st;
     if (lstat(path, &st) != 0) return 0;
@@ -26,7 +29,7 @@ uint32_t get_file_mode(const char *path) {
     return MODE_FILE;
 }
 
-// Parse binary tree data into a Tree struct safely.
+// Binary tree parsing
 int tree_parse(const void *data, size_t len, Tree *tree_out) {
     tree_out->count = 0;
     const uint8_t *ptr = (const uint8_t *)data;
@@ -71,7 +74,7 @@ static int compare_tree_entries(const void *a, const void *b) {
                   ((const TreeEntry *)b)->name);
 }
 
-// Serialize tree
+
 int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
     size_t max_size = tree->count * 296;
     uint8_t *buffer = malloc(max_size);
@@ -100,9 +103,9 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
     return 0;
 }
 
-// ─── PHASE 2 SAFE IMPLEMENTATION ───────────────────────────────────────────
+// ─── PHASE 2 -----
 
-// Minimal implementation (DO NOT depend on index yet)
+
 int tree_from_index(ObjectID *id_out) {
     Tree tree;
     tree.count = 0;
