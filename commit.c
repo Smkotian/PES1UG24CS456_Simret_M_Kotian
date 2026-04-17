@@ -1,8 +1,8 @@
+// commit.c — Commit creation and history traversal
+
 #include "commit.h"
 #include "index.h"
 #include "tree.h"
-#include "pes.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-// Forward declarations
+// Forward declarations (implemented in object.c)
 int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out);
 
@@ -37,7 +37,6 @@ int commit_parse(const void *data, size_t len, Commit *commit_out) {
 
     char author_buf[256];
     uint64_t ts;
-
     if (sscanf(p, "author %255[^\n]\n", author_buf) != 1) return -1;
 
     char *last_space = strrchr(author_buf, ' ');
@@ -123,6 +122,7 @@ int head_read(ObjectID *id_out) {
     if (!f) return -1;
 
     char line[512];
+
     if (!fgets(line, sizeof(line), f)) {
         fclose(f);
         return -1;
@@ -156,6 +156,7 @@ int head_update(const ObjectID *new_commit) {
     if (!f) return -1;
 
     char line[512];
+
     if (!fgets(line, sizeof(line), f)) {
         fclose(f);
         return -1;
@@ -190,65 +191,59 @@ int head_update(const ObjectID *new_commit) {
     return rename(tmp_path, target_path);
 }
 
-// ─── SAFE commit_create ──────────────────────────────────────────────────────
+// ─── FIXED commit_create ─────────────────────────────────────────────────────
 
 int commit_create(const char *message, ObjectID *commit_id_out) {
     Commit c;
-    memset(&c, 0, sizeof(c));   // ✅ avoid garbage
+    memset(&c, 0, sizeof(Commit));
 
-    // 1. build tree
+    // Step 1: Build tree
     if (tree_from_index(&c.tree) != 0) {
-        fprintf(stderr, "error: nothing to commit\n");
+        fprintf(stderr, "Error: tree creation failed\n");
         return -1;
     }
 
-    // 2. parent
+    // Step 2: Parent commit
     if (head_read(&c.parent) == 0) {
         c.has_parent = 1;
     } else {
         c.has_parent = 0;
     }
 
-    // 3. metadata (safe)
+    // Step 3: Author + timestamp
     const char *author = pes_author();
-    if (!author) author = "unknown";
+    if (!author) author = "PES User <pes@localhost>";
 
     snprintf(c.author, sizeof(c.author), "%s", author);
-
     c.timestamp = (uint64_t)time(NULL);
 
-    if (!message) message = "";
+    // Step 4: Message
+    if (!message) message = "No message";
     snprintf(c.message, sizeof(c.message), "%s", message);
 
-    // 4. serialize
+    // Step 5: Serialize
     void *data = NULL;
     size_t len = 0;
 
-    if (commit_serialize(&c, &data, &len) != 0 || !data) {
-        fprintf(stderr, "error: serialize failed\n");
+    if (commit_serialize(&c, &data, &len) != 0) {
+        fprintf(stderr, "Error: serialization failed\n");
         return -1;
     }
 
-    // 5. write object
-    ObjectID id;
-    if (object_write(OBJ_COMMIT, data, len, &id) != 0) {
+    // Step 6: Write object
+    if (object_write(OBJ_COMMIT, data, len, commit_id_out) != 0) {
+        fprintf(stderr, "Error: object write failed\n");
         free(data);
-        fprintf(stderr, "error: object write failed\n");
         return -1;
     }
 
     free(data);
 
-    // 6. update HEAD
-    if (head_update(&id) != 0) {
-        fprintf(stderr, "error: head update failed\n");
+    // Step 7: Update HEAD
+    if (head_update(commit_id_out) != 0) {
+        fprintf(stderr, "Error: HEAD update failed\n");
         return -1;
     }
 
-    if (commit_id_out) {
-        *commit_id_out = id;
-    }
-
-    printf("Committed successfully\n");
     return 0;
 }

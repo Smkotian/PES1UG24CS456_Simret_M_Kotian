@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2
+CFLAGS = -Wall -Wextra -O2 -I.
 LDFLAGS = -lcrypto
 
 # ─── Main binary ─────────────────────────────────────────────────────────────
@@ -10,7 +10,8 @@ OBJS = $(SRCS:.c=.o)
 pes: $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-%.o: %.c pes.h
+# Compile rule (no hardcoded header dependency)
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ─── Test binaries ───────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ pes: $(OBJS)
 test_objects: test_objects.o object.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-test_tree: test_tree.o object.o tree.o
+test_tree: test_tree.o tree.o object.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 # ─── Convenience targets ────────────────────────────────────────────────────
