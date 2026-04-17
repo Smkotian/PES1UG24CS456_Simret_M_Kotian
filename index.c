@@ -181,7 +181,7 @@ int index_save(const Index *index) {
     return rename(tmp_path, INDEX_FILE);
 }
 int index_add(Index *index, const char *path) {
-    // strip leading ./
+    
     if (path[0] == '.' && path[1] == '/') path += 2;
    
     FILE *f = fopen(path, "rb");
